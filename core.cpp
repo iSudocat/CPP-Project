@@ -1,72 +1,4 @@
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <iostream>
-#include <algorithm>
-#include <vector>
-using namespace std ;
-
-#define N 30
-#define M 30
-const int nRows = 10 ;
-const int mCols = 10 ;
-const int MAXDEP = 4 ;
-const int Direction[8][2] = { { -1 , -1 } , { -1 , 0 } , { -1 , 1 } , { 0 , -1 } , { 0 , 1 } , { 1 , -1} , { 1 , 0 } , { 1 , 1 } } ; //八个方向
-
-struct Point
-{
-	int x , y ;
-	Point ( int X = 0 , int Y = 0 ) { x = X , y = Y ; }
-	bool Check()
-	{
-		if ( x < 0 || y < 0 || x > nRows || y > mCols ) return 0 ;
-		return 1 ;
-	}
-} ;
-
-class Board
-{
-private:
-	int state[N][M] ;
-	int empty ;	//空余的格子数量
-public:
-	Board() { } ;
-	Board(int *board) ;
-	Board(const Board &board) ;
-	~Board() ;
-	
-	void PrintBoard() ;
-	void ResetChess( Point w ) ;
-	bool SetChess( Point w , int player ) ;
-	int GetState( Point w , int direct , int dist ) ;		//取出某一方向上距当前点dist位置的状态
-	void Getline( int *line , Point p , int direct , int num ) ;  	//取出连续num个棋子的状态
-	int CalculateValue( int nPlayer , int nEmpty ) ;		//返回不同棋型的估价
-	int Calculate( int *line , int player ) ;					//计算一条直线的估价
-	int IsFinal() ;  						//判断游戏是否结束
-	int Evaluate() ;  						//估价函数：评估当前棋局
-	void clear() ;
-} ;
-
-class AI
-{
-private:
-	Board virtualBoard ;		//AI的模拟棋局
-public:
-	AI(const Board board) ;
-	AI(const AI &ai) ;
-	~AI() ;
-
-	void GenerateQueue( vector <Point> *decide ) ; 	//生成决策队列
-	int AlphaBeta( int player , int depth , int alpha , int beta , Point &best ) ; //极大极小搜索 player=1 先手 player=2 后手
-} ;
-
-class GAME
-{
-private:
-	Board chessBoard ;
-public:
-	void Run() ;
-} ;
+#include "core.h"
 
 //================================ class Board =========================================//
 
@@ -319,7 +251,7 @@ void AI::GenerateQueue( vector <Point> *decide )
 	}
 }
 
-int AI::AlphaBeta( int player , int depth , int alpha , int beta , Point &best )
+int AI::AlphaBeta( int player , int depth , int MAXDEP , int alpha , int beta , Point &best )
 {
 	if ( depth > MAXDEP || virtualBoard.IsFinal() ) return virtualBoard.Evaluate() ;
 	vector <Point> decide ;		//决策队列
@@ -332,14 +264,14 @@ int AI::AlphaBeta( int player , int depth , int alpha , int beta , Point &best )
 		if ( !virtualBoard.SetChess( w , player ) ) continue ;
 		if ( player == 1 )
 		{
-			int ret = AlphaBeta( 2 , depth + 1 , alpha , beta , best ) ;
+			int ret = AlphaBeta( 2 , depth + 1 , MAXDEP , alpha , beta , best ) ;
 			virtualBoard.ResetChess( w ) ;
 			if ( depth == 1 && ret > alpha ) best = w ;
 			alpha = max( alpha , ret ) ;
 			if ( beta <= alpha ) return alpha ;
 		} else
 		{
-			int ret = AlphaBeta( 1 , depth + 1 , alpha , beta , best ) ;
+			int ret = AlphaBeta( 1 , depth + 1 , MAXDEP , alpha , beta , best ) ;
 			virtualBoard.ResetChess( w ) ;
 			if ( depth == 1 && ret < beta ) best = w ;
 			beta = min( beta , ret ) ;
@@ -352,39 +284,49 @@ int AI::AlphaBeta( int player , int depth , int alpha , int beta , Point &best )
 
 //================================ class GAME =========================================//
 
-void GAME::Run()
+void GAME::Run( int mode )
 {
 	chessBoard.clear() ;
+
+	int MAXDEP = 3 ;
+	if ( mode == 1 ) MAXDEP = 1 ;
+	else if ( mode == 2 ) MAXDEP = 3 ;
+	else MAXDEP = 4 ;
+
+	printf( "Choose black or white\n1.black\n2.white\n" ) ;
+	int turn = 1 ;
+	scanf( "%d" , &turn ) ;
+	if ( turn == 2 )
+	{
+		chessBoard.SetChess( Point( nRows / 2 , mCols / 2 ) , (3 - turn) ) ;
+		printf( "The computer choosed ( %d , %d )\n" , nRows / 2 , mCols / 2 ) ;
+		chessBoard.PrintBoard() ;
+	}
+
 	int x , y ;
 	while ( scanf( "%d%d" ,&x , &y ) != EOF )
 	{
 		Point setPoint = Point( x , y ) ;
-		if ( !setPoint.Check() || !chessBoard.SetChess( setPoint , 1 ) )
+		if ( !setPoint.Check() || !chessBoard.SetChess( setPoint , turn ) )
 		{
 			printf( "Failed.Please choose a point again.\n" ) ;
 			continue ;
 		}
 		printf( "Successfully!\n" ) ;
 		chessBoard.PrintBoard() ;
-		int boardState = chessBoard.IsFinal() ; // -1 平局 1 有一方胜利 0 还未决出胜负
+		int boardState = chessBoard.IsFinal() ; // -1:平局 1:有一方胜利 0:还未决出胜负
 		if ( boardState > 0 ) { printf( "YOU WIN!\n" ) ; break ; }
 		else if ( boardState < 0 ) { printf( "DRAW!\n" ) ; break ; }
 
 		AI computerPlayer(chessBoard) ;
 		Point best = Point( 0 , 0 ) ;
-		computerPlayer.AlphaBeta( 2 , 1 , -0x7FFFFFFF , 0x7FFFFFFF , best ) ;
+		computerPlayer.AlphaBeta( (3 - turn) , 1 , MAXDEP , -0x7FFFFFFF , 0x7FFFFFFF , best ) ;
 		printf( "The computer choosed ( %d , %d )\n" , best.x , best.y ) ;
 
-		chessBoard.SetChess( best , 2 ) ;
+		chessBoard.SetChess( best , (3 - turn) ) ;
 		chessBoard.PrintBoard() ;
-		boardState = chessBoard.IsFinal() ; // -1 平局 1 有一方胜利 0 还未决出胜负
+		boardState = chessBoard.IsFinal() ; // -1:平局 1:有一方胜利 0:还未决出胜负
 		if ( boardState > 0 ) { printf( "COMPUTER WIN!\n" ) ; break ; }
 		else if ( boardState < 0 ) { printf( "DRAW!\n" ) ; break ; }
 	}
-}
-
-int main() {
-	GAME game ;
-	game.Run() ;
-	return 0 ;
 }
