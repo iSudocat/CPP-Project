@@ -16,6 +16,7 @@ Board chessBoard;		//棋盘
 int diff = 2;			//难度，默认normal
 int turn = 1;			//先后手，默认先手（黑棋）
 bool isStart = 0;		//判断比赛是否开始
+Point currentPosition;	//记录当前落子位置
 
 // 此代码模块中包含的函数的前向声明:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -142,7 +143,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			int nScreenWidth, nScreenHeight;
 			nScreenWidth = GetSystemMetrics(SM_CXSCREEN);
 			nScreenHeight = GetSystemMetrics(SM_CYSCREEN);
-			MoveWindow(hWnd, (nScreenWidth - (400 + (mCols - 1) * 50)) / 2, 10, 400 + (mCols - 1) * 50, 100 + nRows * 50, FALSE);
+			MoveWindow(hWnd, (nScreenWidth - (400 + (mCols - 1) * 50)) / 2, 0, 400 + (mCols - 1) * 50, 100 + nRows * 50, FALSE);
 		}
     case WM_COMMAND:
         {
@@ -171,10 +172,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			HBRUSH brushWhite = (HBRUSH)GetStockObject(WHITE_BRUSH);
 			HBRUSH brushBlack = (HBRUSH)GetStockObject(BLACK_BRUSH);
 
-			RECT rcClient;//区域结构
-			GetClientRect(hWnd, &rcClient);//获得客户区域
-			HBRUSH brushtemp = CreateSolidBrush(RGB(255, 255, 255));//新建临时白色画刷，用于清空整个界面
-			//FillRect(hdc, &rcClient, brushtemp);//填充客户区域。
+			RECT rcClient;												//区域结构
+			GetClientRect(hWnd, &rcClient);								//获得客户区域
+			HBRUSH brushtemp = CreateSolidBrush(RGB(255, 255, 255));	//新建临时白色画刷，用于清空整个界面
+			FillRect(hdc, &rcClient, brushtemp);						//填充客户区域。
 
 			//画出棋盘最外围边框
 			MoveToEx(hdc, 200, 50, NULL);
@@ -227,6 +228,30 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				}
 			}
 
+			//框出当前棋子
+			if (currentPosition.x && currentPosition.y)
+			{
+				HPEN penRed = CreatePen(PS_SOLID, 2, RGB(255, 0, 0));
+				SelectObject(hdc, penRed);
+
+				Point upLeft = Point(200 + (currentPosition.y - 1) * 50 - 25, 50 + (currentPosition.x - 1) * 50 - 25);		//框的左上角坐标
+				MoveToEx(hdc, upLeft.x - 1, upLeft.y, NULL);
+				LineTo(hdc, upLeft.x + 15, upLeft.y);
+				MoveToEx(hdc, upLeft.x + 35, upLeft.y, NULL);
+				LineTo(hdc, upLeft.x + 50, upLeft.y);
+				LineTo(hdc, upLeft.x + 50, upLeft.y + 15);
+				MoveToEx(hdc, upLeft.x + 50, upLeft.y + 35, NULL);
+				LineTo(hdc, upLeft.x + 50, upLeft.y + 50);
+				LineTo(hdc, upLeft.x + 35, upLeft.y + 50);
+				MoveToEx(hdc, upLeft.x + 15, upLeft.y + 50, NULL);
+				LineTo(hdc, upLeft.x , upLeft.y + 50);
+				LineTo(hdc, upLeft.x, upLeft.y + 35);
+				MoveToEx(hdc, upLeft.x, upLeft.y + 15, NULL);
+				LineTo(hdc, upLeft.x, upLeft.y);
+
+				DeleteObject(penRed);
+			}
+
 			//删除画刷
 			DeleteObject(brushBackground);
 			DeleteObject(brushBlack);
@@ -238,7 +263,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
 	case WM_LBUTTONDOWN:
 		{
-			//chessBoard.PrintBoard(Point(0,0));
 			HDC hdc = GetDC(hWnd);
 
 			POINT cursor;
@@ -255,8 +279,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			if (turn == 2 && !isStart)
 			{
 				chessBoard.SetChess(Point(nRows / 2, mCols / 2), (3 - turn));
-				//chessBoard.PrintBoard(Point(nRows / 2, mCols / 2));
-				InvalidateRect(hWnd, NULL, true);
+				chessBoard.RePaintBoard(hWnd, Point(nRows / 2, mCols / 2));
+				//InvalidateRect(hWnd, NULL, true);
+				//UpdateWindow(hWnd);
 				isStart = 1;
 			}
 
@@ -267,10 +292,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			}
 			isStart = 1;
 
-			RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ERASE);
+			//RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ERASE);
 			//InvalidateRect(hWnd, NULL, true);
 			//UpdateWindow(hWnd);
-			//chessBoard.PrintBoard(setPoint);
+			chessBoard.RePaintBoard(hWnd, setPoint);
 
 			int boardState = chessBoard.IsFinal(); // -1:平局 1:有一方胜利 0:还未决出胜负
 			if (boardState > 0)
@@ -291,9 +316,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			computerPlayer.AlphaBeta((3 - turn), 1, MAXDEP, -0x7FFFFFFF, 0x7FFFFFFF, best);
 			chessBoard.SetChess(best, (3 - turn));
 
-			InvalidateRect(hWnd, NULL, true);
-			UpdateWindow(hWnd);
-			//chessBoard.PrintBoard(best);
+			//InvalidateRect(hWnd, NULL, true);
+			//UpdateWindow(hWnd);
+			chessBoard.RePaintBoard(hWnd, best);
 
 			boardState = chessBoard.IsFinal(); // -1:平局 1:有一方胜利 0:还未决出胜负
 			if (boardState > 0)
@@ -368,82 +393,15 @@ void Board::PrintBoard()
 		}
 		printf("\n");
 	}
+	return;
 }
 
-void Board::PrintBoard(Point lastP)
+void Board::RePaintBoard(HWND hWnd, Point nowP)
 {
-	/*PAINTSTRUCT ps;
-	HDC hdc = BeginPaint(mainhWnd, &ps);
-	TextOut(hdc,0,0,L"TEST",4);
-	// TODO: 在此处添加使用 hdc 的任何绘图代码...
-
-	HBRUSH brushBackground = CreateSolidBrush(RGB(211, 193, 155));
-	HBRUSH brushWhite = (HBRUSH)GetStockObject(WHITE_BRUSH);
-	HBRUSH brushBlack = (HBRUSH)GetStockObject(BLACK_BRUSH);
-
-	RECT rcClient;//区域结构
-	GetClientRect(mainhWnd, &rcClient);//获得客户区域
-	HBRUSH brushtemp = CreateSolidBrush(RGB(255, 255, 255));//新建临时白色画刷，用于清空整个界面
-	FillRect(hdc, &rcClient, brushtemp);//填充客户区域。
-
-	//画出棋盘最外围边框
-	MoveToEx(hdc, 200, 50, NULL);
-	LineTo(hdc, 200, 750);
-	LineTo(hdc, 900, 750);
-	LineTo(hdc, 900, 50);
-	LineTo(hdc, 200, 50);
-
-	//输出行号列号
-	int size;
-	TCHAR szText[256];
-	for (int i = 1; i <= nRows; i++)
-	{
-		size = wsprintf(szText, TEXT("%2d"), i);
-		TextOut(hdc, (200 + (i - 1) * 50) - size * 5, 10, szText, size);
-		TextOut(hdc, 160, (50 + (i - 1) * 50) - size * 5, szText, size);
-	}
-
-	//画棋盘网格
-	SelectObject(hdc, brushBackground);
-	int up = 50;
-	for (int i = 1; i < nRows; i++)
-	{
-		int bottom = up + 50;
-		int left = 200;
-		for (int j = 1; j < mCols; j++)
-		{
-			Rectangle(hdc, left, up, left + 50, bottom);
-			left += 50;
-		}
-		up += 50;
-	}
-
-	//画棋子
-	for (int i = 1; i <= nRows; i++)
-	{
-		for (int j = 1; j <= mCols; j++)
-		{
-			int currentState = chessBoard.GetState(Point(i, j), 1, 0);
-			if (!currentState) continue;
-			if (currentState == 1)
-			{
-				SelectObject(hdc, brushBlack);
-			}
-			else
-			{
-				SelectObject(hdc, brushWhite);
-			}
-			Ellipse(hdc, 200 + (j - 1) * 50 - 22, 50 + (i - 1) * 50 - 22, 200 + (j - 1) * 50 + 22, 50 + (i - 1) * 50 + 22);
-		}
-	}
-
-	//删除画刷
-	DeleteObject(brushBackground);
-	DeleteObject(brushBlack);
-	DeleteObject(brushWhite);
-	DeleteObject(brushtemp);
-
-	EndPaint(mainhWnd, &ps);*/
+	currentPosition = nowP;
+	InvalidateRect(hWnd, NULL, true);
+	UpdateWindow(hWnd);
+	return;
 }
 
 int Board::GetState(Point w, int direct, int dist)
