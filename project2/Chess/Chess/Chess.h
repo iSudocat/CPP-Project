@@ -48,7 +48,6 @@ public:
 	~Board();
 
 	void clear();
-	void PrintBoard();
 	bool SetChess(Point w, int player);
 	void ResetChess(Point w);
 	void RePaintBoard(HWND hWnd, Point nowP);					//更新窗口并显示上一次落子位置
@@ -73,19 +72,11 @@ public:
 	int AlphaBeta(int player, int depth, int MAXDEP, int alpha, int beta, Point& best); //极大极小搜索 player=1 先手 player=2 后手
 };
 
-class GAME
-{
-	//控制台应用下的GAME类
-private:
-	Board chessBoard;
-public:
-	void Run(int mode);
-};
-
 //非成员函数
 void findPoint(POINT& cursor);			//将鼠标客户端坐标转换成棋盘坐标
 int squareDist(Point P, Point Q);		//计算距离的平方
 int square(int x);						//计算平方
 
 void DisplayMessageBox(HWND hWnd, const TCHAR* szText, const TCHAR* szTitle, bool isQuit);				//显示消息框
-void TryAgain(HWND hWnd);
+void TryAgain(HWND hWnd);				//重新开始游戏
+void NewRecord(Point w, int player);	//新增一条记录
