@@ -7,6 +7,8 @@
 #define MAX_LOADSTRING 100
 
 // 全局变量:
+int nScreenWidth;
+int nScreenHeight;
 HINSTANCE hInst;                                // 当前实例
 WCHAR szTitle[MAX_LOADSTRING];                  // 标题栏文本
 WCHAR szWindowClass[MAX_LOADSTRING];            // 主窗口类名
@@ -38,17 +40,20 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
 
+	nScreenWidth = GetSystemMetrics(SM_CXSCREEN);
+	nScreenHeight = GetSystemMetrics(SM_CYSCREEN);
+
 	chessBoard.clear();
 	
-	polygonUp[0].x = 200, polygonUp[0].y = 50;
-	polygonUp[1].x = 210, polygonUp[1].y = 40;
-	polygonUp[2].x = 910, polygonUp[2].y = 40;
-	polygonUp[3].x = 900, polygonUp[3].y = 50;
+	polygonUp[0].x = 50, polygonUp[0].y = 50;
+	polygonUp[1].x = 60, polygonUp[1].y = 40;
+	polygonUp[2].x = 760, polygonUp[2].y = 40;
+	polygonUp[3].x = 750, polygonUp[3].y = 50;
 
-	polygonRt[0].x = 900, polygonRt[0].y = 50;
-	polygonRt[1].x = 910, polygonRt[1].y = 40;
-	polygonRt[2].x = 910, polygonRt[2].y = 740;
-	polygonRt[3].x = 900, polygonRt[3].y = 750;
+	polygonRt[0].x = 750, polygonRt[0].y = 50;
+	polygonRt[1].x = 760, polygonRt[1].y = 40;
+	polygonRt[2].x = 760, polygonRt[2].y = 740;
+	polygonRt[3].x = 750, polygonRt[3].y = 750;
 
     // 初始化全局字符串
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
@@ -152,11 +157,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
 	case WM_CREATE:
 		{
-			int nScreenWidth, nScreenHeight;
-			nScreenWidth = GetSystemMetrics(SM_CXSCREEN);
-			nScreenHeight = GetSystemMetrics(SM_CYSCREEN);
-			MoveWindow(hWnd, (nScreenWidth - (400 + (mCols - 1) * 50)) / 2, 0, 400 + (mCols - 1) * 50, 100 + nRows * 50, FALSE);
+			MoveWindow(hWnd, (nScreenWidth - (100 + (mCols - 1) * 50)) / 2, 0, 100 + (mCols - 1) * 50 + 30, 100 + nRows * 50, FALSE);
 		}
+		break;
     case WM_COMMAND:
         {
 			HMENU hMenu = GetMenu(hWnd);
@@ -217,6 +220,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					CheckMenuItem(hMenu, ID_WHITE, MF_CHECKED);
 					CheckMenuItem(hMenu, ID_BLACK, MF_UNCHECKED);
 					chessBoard.SetChess(Point(nRows / 2 + 1, mCols / 2 + 1), (3 - turn));
+					NewRecord(Point(nRows / 2 + 1, mCols / 2 + 1), (3 - turn));
 					chessBoard.RePaintBoard(hWnd, Point(nRows / 2 + 1, mCols / 2 + 1));
 					isStart = 1;
 				}
@@ -258,30 +262,48 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			HPEN penBoldBlack = CreatePen(PS_SOLID, 2, RGB(0, 0, 0));
 			//画出棋盘最外围边框
 			//SelectObject(hdcBuffer, penBoldBlack);
-			MoveToEx(hdcBuffer, 200, 50, NULL);
-			LineTo(hdcBuffer, 200, 750);
-			LineTo(hdcBuffer, 900, 750);
-			LineTo(hdcBuffer, 900, 50);
-			LineTo(hdcBuffer, 200, 50);
+			MoveToEx(hdcBuffer, 50, 50, NULL);
+			LineTo(hdcBuffer, 50, 750);
+			LineTo(hdcBuffer, 750, 750);
+			LineTo(hdcBuffer, 750, 50);
+			LineTo(hdcBuffer, 50, 50);
 
 			//输出行号列号
-			//SetTextAlign(hdcBuffer, TA_CENTER);
 			int size;
 			TCHAR szText[256];
 			for (int i = 1; i <= nRows; i++)
 			{
 				size = wsprintf(szText, TEXT("%2d"), i);
-				TextOut(hdcBuffer, (200 + (i - 1) * 50) - size * 5, 10, szText, size);
-				TextOut(hdcBuffer, 160, (50 + (i - 1) * 50) - size * 5, szText, size);
+				TextOut(hdcBuffer, (50 + (i - 1) * 50) - size * 5, 10, szText, size);
+				TextOut(hdcBuffer, 10, (50 + (i - 1) * 50) - size * 5, szText, size);
 			}
 
 			//输出落子记录
 			SelectObject(hdcBuffer, brushGray);
+			Rectangle(hdcBuffer, 900, 90, min(1400, nScreenWidth - 50), 710);
+			int titlex = (900 + min(1400, nScreenWidth - 50)) / 2 - 30;
+			int titley = 40;
 			HFONT hFont = CreateFont
+			(
+				40, 0,							//高度40, 宽取0表示由系统选择最佳值
+				0, 0,							//文本倾斜，与字体倾斜都为0
+				FW_HEAVY,
+				0, 0, 0,						//非斜体，无下划线，无中划线
+				UNICODE,						//字符集
+				OUT_DEFAULT_PRECIS,
+				CLIP_DEFAULT_PRECIS,
+				DEFAULT_QUALITY,
+				DEFAULT_PITCH | FF_DONTCARE,	//一系列的默认值
+				L"落子记录字体"					//字体名称
+			);
+			SelectObject(hdcBuffer, hFont);
+			size = wsprintf(szText, TEXT("记录"));
+			TextOut(hdcBuffer, titlex, titley, szText, size);
+			hFont = CreateFont
 			(
 				20, 0,							//高度20, 宽取0表示由系统选择最佳值
 				0, 0,							//文本倾斜，与字体倾斜都为0
-				FW_NORMAL,						
+				FW_HEAVY,						
 				0, 0, 0,						//非斜体，无下划线，无中划线
 				UNICODE,						//字符集
 				OUT_DEFAULT_PRECIS,
@@ -290,10 +312,28 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				DEFAULT_PITCH | FF_DONTCARE,	//一系列的默认值
 				L"落子记录字体"					//字体名称
 			);
-			SetTextAlign(hdcBuffer, TA_CENTER);
+			SelectObject(hdcBuffer, hFont);
 			SetTextColor(hdcBuffer, RGB(63, 72, 204));
-			Rectangle(hdcBuffer, 1100, 200, 1400, 700);
-
+			SetBkColor(hdcBuffer, RGB(195, 195, 195));
+			int textx = 930;
+			int texty = 100;
+			int num = setChessRecords.size();
+			if (num) {
+				num++;
+				num--;
+			}
+			for (int i = max(0, num - 30); i < num; i ++, texty += 20)
+			{
+				Record currentRecord = setChessRecords[i];
+				size = wsprintf(szText, TEXT("%02d:%02d:%02d"), currentRecord.localTime.wHour, currentRecord.localTime.wMinute, currentRecord.localTime.wSecond);
+				TextOut(hdcBuffer, textx, texty, szText, size);
+				if ( currentRecord.player == 1 ) size = wsprintf(szText, TEXT("玩家落子"));
+				else size = wsprintf(szText, TEXT("电脑落子"));
+				TextOut(hdcBuffer, textx + 100, texty , szText, size);
+				size = wsprintf(szText, TEXT("(%02d,%02d)"), currentRecord.chessCoordinate.x, currentRecord.chessCoordinate.y);
+				TextOut(hdcBuffer, textx + 200, texty , szText, size);
+			}
+			DeleteObject(hFont);
 
 			//画棋盘网格
 			SelectObject(hdcBuffer, brushBackground);
@@ -301,7 +341,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			for (int i = 1; i < nRows; i++)
 			{
 				int bottom = up + 50;
-				int left = 200;
+				int left = 50;
 				for (int j = 1; j < mCols; j++)
 				{
 					Rectangle(hdcBuffer, left, up, left + 50, bottom);
@@ -330,7 +370,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					{
 						SelectObject(hdcBuffer, brushWhite);
 					}
-					Ellipse(hdcBuffer, 200 + (j - 1) * 50 - 22, 50 + (i - 1) * 50 - 22, 200 + (j - 1) * 50 + 22, 50 + (i - 1) * 50 + 22);
+					Ellipse(hdcBuffer, 50 + (j - 1) * 50 - 22, 50 + (i - 1) * 50 - 22, 50 + (j - 1) * 50 + 22, 50 + (i - 1) * 50 + 22);
 				}
 			}
 
@@ -340,7 +380,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				HPEN penRed = CreatePen(PS_SOLID, 2, RGB(255, 0, 0));
 				SelectObject(hdcBuffer, penRed);
 
-				Point upLeft = Point(200 + (currentPosition.y - 1) * 50 - 25, 50 + (currentPosition.x - 1) * 50 - 25);		//框的左上角坐标
+				Point upLeft = Point(50 + (currentPosition.y - 1) * 50 - 25, 50 + (currentPosition.x - 1) * 50 - 25);		//框的左上角坐标
 				MoveToEx(hdcBuffer, upLeft.x - 1, upLeft.y, NULL);
 				LineTo(hdcBuffer, upLeft.x + 15, upLeft.y);
 				MoveToEx(hdcBuffer, upLeft.x + 35, upLeft.y, NULL);
@@ -370,7 +410,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				HPEN penRed = CreatePen(PS_SOLID, 2, RGB(255, 0, 0));
 				SelectObject(hdcBuffer, penRed);
 
-				Point upLeft = Point(200 + (mousePosition.y - 1) * 50 - 25, 50 + (mousePosition.x - 1) * 50 - 25);		//框的左上角坐标
+				Point upLeft = Point(50 + (mousePosition.y - 1) * 50 - 25, 50 + (mousePosition.x - 1) * 50 - 25);		//框的左上角坐标
 				MoveToEx(hdcBuffer, upLeft.x - 1, upLeft.y, NULL);
 				LineTo(hdcBuffer, upLeft.x + 15, upLeft.y);
 				MoveToEx(hdcBuffer, upLeft.x + 35, upLeft.y, NULL);
@@ -412,14 +452,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			Point currentCursorPos = Point(currentCursor.x, currentCursor.y);
 			if (currentCursorPos.x != lastCursorPos.x || currentCursorPos.y != lastCursorPos.y)
 			{
-				Point upLeft = Point(200 + (lastCursorPos.y - 1) * 50 - 25, 50 + (lastCursorPos.x - 1) * 50 - 25);
+				Point upLeft = Point(50 + (lastCursorPos.y - 1) * 50 - 25, 50 + (lastCursorPos.x - 1) * 50 - 25);
 				RECT lastRECT;
 				lastRECT.left = upLeft.x - 2;
 				lastRECT.top = upLeft.y - 2;
 				lastRECT.right = upLeft.x + 52;
 				lastRECT.bottom = upLeft.y + 52;
 
-				upLeft = Point(200 + (currentCursorPos.y - 1) * 50 - 25, 50 + (currentCursorPos.x - 1) * 50 - 25);
+				upLeft = Point(50 + (currentCursorPos.y - 1) * 50 - 25, 50 + (currentCursorPos.x - 1) * 50 - 25);
 				RECT currRECT;
 				currRECT.left = upLeft.x - 2;
 				currRECT.top = upLeft.y - 2;
@@ -454,6 +494,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			}
 			isStart = 1;
 
+			NewRecord(setPoint, turn);
 			chessBoard.RePaintBoard(hWnd, setPoint);
 
 			int boardState = chessBoard.IsFinal(); // -1:平局 1:有一方胜利 0:还未决出胜负
@@ -478,6 +519,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			Point best = Point(0, 0);
 			computerPlayer.AlphaBeta((3 - turn), 1, MAXDEP, -0x7FFFFFFF, 0x7FFFFFFF, best);
 			chessBoard.SetChess(best, (3 - turn));
+			NewRecord(best, (3 - turn));
 
 			chessBoard.RePaintBoard(hWnd, best);
 
@@ -545,22 +587,6 @@ Board::Board(const Board& board)
 
 Board::~Board() { }
 
-void Board::PrintBoard()
-{
-	printf("   ");
-	for (int j = 1; j <= mCols; j++) printf("%2d ", j);
-	printf("\n");
-	for (int i = 1; i <= nRows; i++) {
-		printf("%3d", i);
-		for (int j = 1; j <= mCols; j++) {
-			if (state[i][j]) printf(" %c ", (char)state[i][j] == 1 ? '*' : '#');
-			else printf("   ");
-		}
-		printf("\n");
-	}
-	return;
-}
-
 void Board::RePaintBoard(HWND hWnd, Point nowP)
 {
 	currentPosition = nowP;
@@ -584,12 +610,6 @@ void Board::ResetChess(Point w)
 
 bool Board::SetChess(Point w, int player)
 {
-	Record tempRecord;
-	tempRecord.chessCoordinate = w;
-	tempRecord.player = player;
-	GetLocalTime(&tempRecord.localTime);
-	setChessRecords.push_back(tempRecord);
-
 	if (!state[w.x][w.y]) {
 		empty--;
 		return state[w.x][w.y] = player;
@@ -829,56 +849,15 @@ int AI::AlphaBeta(int player, int depth, int MAXDEP, int alpha, int beta, Point 
 	else return beta;
 }
 
-//================================ class GAME =========================================//
-
-void GAME::Run(int mode)
-{
-	chessBoard.clear();
-
-	int MAXDEP = 3;
-	if (mode == 1) MAXDEP = 1;
-	else if (mode == 2) MAXDEP = 3;
-	else MAXDEP = 4;
-
-	printf("Choose black or white\n1.black\n2.white\n");
-	int turn = 1;
-	scanf_s("%d", &turn);
-	if (turn == 2)
-	{
-		chessBoard.SetChess(Point(nRows / 2, mCols / 2), (3 - turn));
-		printf("The computer choosed ( %d , %d )\n", nRows / 2, mCols / 2);
-		chessBoard.PrintBoard();
-	}
-
-	int x, y;
-	while (scanf_s("%d%d", &x, &y) != EOF)
-	{
-		Point setPoint = Point(x, y);
-		if (!setPoint.Check() || !chessBoard.SetChess(setPoint, turn))
-		{
-			printf("Failed.Please choose a point again.\n");
-			continue;
-		}
-		printf("Successfully!\n");
-		chessBoard.PrintBoard();
-		int boardState = chessBoard.IsFinal(); // -1:平局 1:有一方胜利 0:还未决出胜负
-		if (boardState > 0) { printf("YOU WIN!\n"); break; }
-		else if (boardState < 0) { printf("DRAW!\n"); break; }
-
-		AI computerPlayer(chessBoard);
-		Point best = Point(0, 0);
-		computerPlayer.AlphaBeta((3 - turn), 1, MAXDEP, -0x7FFFFFFF, 0x7FFFFFFF, best);
-		printf("The computer choosed ( %d , %d )\n", best.x, best.y);
-
-		chessBoard.SetChess(best, (3 - turn));
-		chessBoard.PrintBoard();
-		boardState = chessBoard.IsFinal(); // -1:平局 1:有一方胜利 0:还未决出胜负
-		if (boardState > 0) { printf("COMPUTER WIN!\n"); break; }
-		else if (boardState < 0) { printf("DRAW!\n"); break; }
-	}
-}
-
 //非成员函数
+void NewRecord(Point w, int player)
+{
+	Record tempRecord;
+	tempRecord.chessCoordinate = w;
+	tempRecord.player = player;
+	GetLocalTime(&tempRecord.localTime);
+	setChessRecords.push_back(tempRecord);
+}
 void DisplayMessageBox(HWND hWnd, const TCHAR* szText, const TCHAR* szTitle, bool isQuit)
 {
 	int msgboxID = MessageBox(hWnd, szText, szTitle, MB_ICONINFORMATION | MB_OKCANCEL);
@@ -920,7 +899,7 @@ void findPoint(POINT& cursor)
 	{
 		for (int y = 1; y <= mCols; y++)
 		{
-			Point pointOnClient = Point( 200 + (y - 1) * 50 , 50 + (x - 1) * 50 );
+			Point pointOnClient = Point( 50 + (y - 1) * 50 , 50 + (x - 1) * 50 );
 			if (squareDist(pointOnClient, Point(cursor.x, cursor.y)) <= 25 * 25)
 			{
 				cursor.x = x;
