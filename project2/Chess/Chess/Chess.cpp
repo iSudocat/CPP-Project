@@ -16,7 +16,13 @@ Board chessBoard;		//棋盘
 int diff = 2;			//难度，默认normal
 int turn = 1;			//先后手，默认先手（黑棋）
 bool isStart = 0;		//判断比赛是否开始
+bool isEnd = 0;			//判断比赛是否结束
 Point currentPosition;	//记录当前落子位置
+Point lastCursorPos;	//记录上一次鼠标位置
+
+vector <Record> setChessRecords;
+
+POINT polygonUp[4], polygonRt[4];
 
 // 此代码模块中包含的函数的前向声明:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -32,12 +38,18 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
 
-    // TODO: 在此处放置代码。
 	chessBoard.clear();
-	/*chessBoard.SetChess(Point(1, 1), 1);
-	chessBoard.SetChess(Point(1, 2), 1);
-	chessBoard.SetChess(Point(2, 3), 2);
-	chessBoard.SetChess(Point(2, 2), 2);*/
+	
+	polygonUp[0].x = 200, polygonUp[0].y = 50;
+	polygonUp[1].x = 210, polygonUp[1].y = 40;
+	polygonUp[2].x = 910, polygonUp[2].y = 40;
+	polygonUp[3].x = 900, polygonUp[3].y = 50;
+
+	polygonRt[0].x = 900, polygonRt[0].y = 50;
+	polygonRt[1].x = 910, polygonRt[1].y = 40;
+	polygonRt[2].x = 910, polygonRt[2].y = 740;
+	polygonRt[3].x = 900, polygonRt[3].y = 750;
+
     // 初始化全局字符串
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
     LoadStringW(hInstance, IDC_CHESS, szWindowClass, MAX_LOADSTRING);
@@ -108,7 +120,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    hInst = hInstance; // 将实例句柄存储在全局变量中
 
-   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
+   HWND hWnd = CreateWindowW(szWindowClass, TEXT("五子棋"), WS_OVERLAPPEDWINDOW,
       CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
 
    mainhWnd = hWnd;		//保存窗口句柄
@@ -147,10 +159,69 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		}
     case WM_COMMAND:
         {
+			HMENU hMenu = GetMenu(hWnd);
             int wmId = LOWORD(wParam);
             // 分析菜单选择:
             switch (wmId)
             {
+			case ID_RESTART:
+				DisplayMessageBox(hWnd, TEXT("确定重新开始？"), TEXT("重新开始"), 0);
+				break;
+			case ID_EASY:
+			{
+				CheckMenuItem(hMenu, ID_EASY, MF_CHECKED);
+				CheckMenuItem(hMenu, ID_NORMAL, MF_UNCHECKED);
+				CheckMenuItem(hMenu, ID_HARD, MF_UNCHECKED);
+				diff = 1;
+			}
+				break;
+			case ID_NORMAL:
+			{
+				CheckMenuItem(hMenu, ID_EASY, MF_UNCHECKED);
+				CheckMenuItem(hMenu, ID_NORMAL, MF_CHECKED);
+				CheckMenuItem(hMenu, ID_HARD, MF_UNCHECKED);
+				diff = 2;
+			}
+				break;
+			case ID_HARD:
+			{
+				CheckMenuItem(hMenu, ID_EASY, MF_UNCHECKED);
+				CheckMenuItem(hMenu, ID_NORMAL, MF_UNCHECKED);
+				CheckMenuItem(hMenu, ID_HARD, MF_CHECKED);
+				diff = 3;
+			}
+				break;
+			case ID_BLACK:
+			{
+				if (isStart)
+				{
+					MessageBox(hWnd, TEXT("游戏已经开始\n请重新开始游戏以选择颜色"), TEXT("失败"), MB_OK | MB_ICONWARNING);
+				}
+				else
+				{
+					turn = 1;
+					CheckMenuItem(hMenu, ID_WHITE, MF_UNCHECKED);
+					CheckMenuItem(hMenu, ID_BLACK, MF_CHECKED);
+				}
+			}
+				break;
+			case ID_WHITE:
+			{
+				if (isStart)
+				{
+					MessageBox(hWnd, TEXT("游戏已经开始\n请重新开始游戏以选择颜色"), TEXT("失败"), MB_OK | MB_ICONWARNING);
+				}
+				else
+				{
+					turn = 2;
+					CheckMenuItem(hMenu, ID_WHITE, MF_CHECKED);
+					CheckMenuItem(hMenu, ID_BLACK, MF_UNCHECKED);
+					chessBoard.SetChess(Point(nRows / 2 + 1, mCols / 2 + 1), (3 - turn));
+					chessBoard.RePaintBoard(hWnd, Point(nRows / 2 + 1, mCols / 2 + 1));
+					isStart = 1;
+				}
+			}
+				break;
             case IDM_ABOUT:
                 DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
                 break;
@@ -166,36 +237,66 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         {
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hWnd, &ps);
-            // TODO: 在此处添加使用 hdc 的任何绘图代码...
+			HDC hdcBuffer = CreateCompatibleDC(hdc);									//给设备分配一个内存空间
+			RECT rcClient;																//区域结构
+			GetClientRect(hWnd, &rcClient);												//获得客户区域
+			int windowHeight = rcClient.bottom - rcClient.top;							//客户区域高度
+			int windowWidth = rcClient.right - rcClient.left;							//客户区域宽度
+			HBITMAP hBitMap = CreateCompatibleBitmap(hdc, windowWidth, windowHeight);	//创建位图
+			SelectObject(hdcBuffer, hBitMap);											//将画布贴到绘图设备上
 
 			HBRUSH brushBackground = CreateSolidBrush(RGB(211, 193, 155));
+			HBRUSH brushShadow = CreateSolidBrush(RGB(221, 158, 89));
+			HBRUSH brushGray = CreateSolidBrush(RGB(195, 195, 195));
 			HBRUSH brushWhite = (HBRUSH)GetStockObject(WHITE_BRUSH);
 			HBRUSH brushBlack = (HBRUSH)GetStockObject(BLACK_BRUSH);
 
-			RECT rcClient;												//区域结构
-			GetClientRect(hWnd, &rcClient);								//获得客户区域
-			HBRUSH brushtemp = CreateSolidBrush(RGB(255, 255, 255));	//新建临时白色画刷，用于清空整个界面
-			FillRect(hdc, &rcClient, brushtemp);						//填充客户区域。
 
+			HBRUSH brushtemp = CreateSolidBrush(RGB(255, 255, 255));		//新建临时白色画刷，用于清空整个界面
+			FillRect(hdcBuffer, &rcClient, brushtemp);						//填充客户区域。
+
+			HPEN penBoldBlack = CreatePen(PS_SOLID, 2, RGB(0, 0, 0));
 			//画出棋盘最外围边框
-			MoveToEx(hdc, 200, 50, NULL);
-			LineTo(hdc, 200, 750);
-			LineTo(hdc, 900, 750);
-			LineTo(hdc, 900, 50);
-			LineTo(hdc, 200, 50);
+			//SelectObject(hdcBuffer, penBoldBlack);
+			MoveToEx(hdcBuffer, 200, 50, NULL);
+			LineTo(hdcBuffer, 200, 750);
+			LineTo(hdcBuffer, 900, 750);
+			LineTo(hdcBuffer, 900, 50);
+			LineTo(hdcBuffer, 200, 50);
 
 			//输出行号列号
+			//SetTextAlign(hdcBuffer, TA_CENTER);
 			int size;
 			TCHAR szText[256];
 			for (int i = 1; i <= nRows; i++)
 			{
 				size = wsprintf(szText, TEXT("%2d"), i);
-				TextOut(hdc, (200 + (i - 1) * 50) - size * 5, 10, szText, size);
-				TextOut(hdc, 160, (50 + (i - 1) * 50) - size * 5, szText, size);
+				TextOut(hdcBuffer, (200 + (i - 1) * 50) - size * 5, 10, szText, size);
+				TextOut(hdcBuffer, 160, (50 + (i - 1) * 50) - size * 5, szText, size);
 			}
 
+			//输出落子记录
+			SelectObject(hdcBuffer, brushGray);
+			HFONT hFont = CreateFont
+			(
+				20, 0,							//高度20, 宽取0表示由系统选择最佳值
+				0, 0,							//文本倾斜，与字体倾斜都为0
+				FW_NORMAL,						
+				0, 0, 0,						//非斜体，无下划线，无中划线
+				UNICODE,						//字符集
+				OUT_DEFAULT_PRECIS,
+				CLIP_DEFAULT_PRECIS,
+				DEFAULT_QUALITY,        
+				DEFAULT_PITCH | FF_DONTCARE,	//一系列的默认值
+				L"落子记录字体"					//字体名称
+			);
+			SetTextAlign(hdcBuffer, TA_CENTER);
+			SetTextColor(hdcBuffer, RGB(63, 72, 204));
+			Rectangle(hdcBuffer, 1100, 200, 1400, 700);
+
+
 			//画棋盘网格
-			SelectObject(hdc, brushBackground);
+			SelectObject(hdcBuffer, brushBackground);
 			int up = 50;
 			for (int i = 1; i < nRows; i++)
 			{
@@ -203,11 +304,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				int left = 200;
 				for (int j = 1; j < mCols; j++)
 				{
-					Rectangle(hdc, left, up, left + 50, bottom);
+					Rectangle(hdcBuffer, left, up, left + 50, bottom);
 					left += 50;
 				}
 				up += 50;
 			}
+
+			//画棋盘阴影
+			SelectObject(hdcBuffer, brushShadow);
+			Polygon(hdcBuffer, polygonUp, 4);
+			Polygon(hdcBuffer, polygonRt, 4);
 
 			//画棋子
 			for (int i = 1; i <= nRows; i++)
@@ -218,13 +324,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					if (!currentState) continue;
 					if (currentState == 1)
 					{
-						SelectObject(hdc, brushBlack);
+						SelectObject(hdcBuffer, brushBlack);
 					}
 					else
 					{
-						SelectObject(hdc, brushWhite);
+						SelectObject(hdcBuffer, brushWhite);
 					}
-					Ellipse(hdc, 200 + (j - 1) * 50 - 22, 50 + (i - 1) * 50 - 22, 200 + (j - 1) * 50 + 22, 50 + (i - 1) * 50 + 22);
+					Ellipse(hdcBuffer, 200 + (j - 1) * 50 - 22, 50 + (i - 1) * 50 - 22, 200 + (j - 1) * 50 + 22, 50 + (i - 1) * 50 + 22);
 				}
 			}
 
@@ -232,39 +338,104 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			if (currentPosition.x && currentPosition.y)
 			{
 				HPEN penRed = CreatePen(PS_SOLID, 2, RGB(255, 0, 0));
-				SelectObject(hdc, penRed);
+				SelectObject(hdcBuffer, penRed);
 
 				Point upLeft = Point(200 + (currentPosition.y - 1) * 50 - 25, 50 + (currentPosition.x - 1) * 50 - 25);		//框的左上角坐标
-				MoveToEx(hdc, upLeft.x - 1, upLeft.y, NULL);
-				LineTo(hdc, upLeft.x + 15, upLeft.y);
-				MoveToEx(hdc, upLeft.x + 35, upLeft.y, NULL);
-				LineTo(hdc, upLeft.x + 50, upLeft.y);
-				LineTo(hdc, upLeft.x + 50, upLeft.y + 15);
-				MoveToEx(hdc, upLeft.x + 50, upLeft.y + 35, NULL);
-				LineTo(hdc, upLeft.x + 50, upLeft.y + 50);
-				LineTo(hdc, upLeft.x + 35, upLeft.y + 50);
-				MoveToEx(hdc, upLeft.x + 15, upLeft.y + 50, NULL);
-				LineTo(hdc, upLeft.x , upLeft.y + 50);
-				LineTo(hdc, upLeft.x, upLeft.y + 35);
-				MoveToEx(hdc, upLeft.x, upLeft.y + 15, NULL);
-				LineTo(hdc, upLeft.x, upLeft.y);
+				MoveToEx(hdcBuffer, upLeft.x - 1, upLeft.y, NULL);
+				LineTo(hdcBuffer, upLeft.x + 15, upLeft.y);
+				MoveToEx(hdcBuffer, upLeft.x + 35, upLeft.y, NULL);
+				LineTo(hdcBuffer, upLeft.x + 50, upLeft.y);
+				LineTo(hdcBuffer, upLeft.x + 50, upLeft.y + 15);
+				MoveToEx(hdcBuffer, upLeft.x + 50, upLeft.y + 35, NULL);
+				LineTo(hdcBuffer, upLeft.x + 50, upLeft.y + 50);
+				LineTo(hdcBuffer, upLeft.x + 35, upLeft.y + 50);
+				MoveToEx(hdcBuffer, upLeft.x + 15, upLeft.y + 50, NULL);
+				LineTo(hdcBuffer, upLeft.x , upLeft.y + 50);
+				LineTo(hdcBuffer, upLeft.x, upLeft.y + 35);
+				MoveToEx(hdcBuffer, upLeft.x, upLeft.y + 15, NULL);
+				LineTo(hdcBuffer, upLeft.x, upLeft.y);
 
 				DeleteObject(penRed);
 			}
 
-			//删除画刷
+			//突出显示当前鼠标位置
+			POINT currentCursor;
+			GetCursorPos(&currentCursor);
+			ScreenToClient(hWnd, &currentCursor);
+			findPoint(currentCursor);
+			Point mousePosition = Point(currentCursor.x, currentCursor.y);
+
+			if (mousePosition.Check())
+			{
+				HPEN penRed = CreatePen(PS_SOLID, 2, RGB(255, 0, 0));
+				SelectObject(hdcBuffer, penRed);
+
+				Point upLeft = Point(200 + (mousePosition.y - 1) * 50 - 25, 50 + (mousePosition.x - 1) * 50 - 25);		//框的左上角坐标
+				MoveToEx(hdcBuffer, upLeft.x - 1, upLeft.y, NULL);
+				LineTo(hdcBuffer, upLeft.x + 15, upLeft.y);
+				MoveToEx(hdcBuffer, upLeft.x + 35, upLeft.y, NULL);
+				LineTo(hdcBuffer, upLeft.x + 50, upLeft.y);
+				LineTo(hdcBuffer, upLeft.x + 50, upLeft.y + 15);
+				MoveToEx(hdcBuffer, upLeft.x + 50, upLeft.y + 35, NULL);
+				LineTo(hdcBuffer, upLeft.x + 50, upLeft.y + 50);
+				LineTo(hdcBuffer, upLeft.x + 35, upLeft.y + 50);
+				MoveToEx(hdcBuffer, upLeft.x + 15, upLeft.y + 50, NULL);
+				LineTo(hdcBuffer, upLeft.x, upLeft.y + 50);
+				LineTo(hdcBuffer, upLeft.x, upLeft.y + 35);
+				MoveToEx(hdcBuffer, upLeft.x, upLeft.y + 15, NULL);
+				LineTo(hdcBuffer, upLeft.x, upLeft.y);
+
+				DeleteObject(penRed);
+			}
+
+			BitBlt(hdc, 0, 0, windowWidth, windowHeight, hdcBuffer, 0, 0, SRCCOPY);//复制到系统设备上显示
+			//删除画刷 画笔
 			DeleteObject(brushBackground);
+			DeleteObject(brushShadow);
 			DeleteObject(brushBlack);
 			DeleteObject(brushWhite);
+			DeleteObject(brushGray);
 			DeleteObject(brushtemp);
+			DeleteObject(penBoldBlack);
+			//删除内存中的hdcBuffer
+			DeleteDC(hdcBuffer);
 
             EndPaint(hWnd, &ps);
         }
         break;
+	case WM_MOUSEMOVE:
+		{
+			POINT currentCursor;
+			GetCursorPos(&currentCursor);
+			ScreenToClient(hWnd, &currentCursor);
+			findPoint(currentCursor);
+			Point currentCursorPos = Point(currentCursor.x, currentCursor.y);
+			if (currentCursorPos.x != lastCursorPos.x || currentCursorPos.y != lastCursorPos.y)
+			{
+				Point upLeft = Point(200 + (lastCursorPos.y - 1) * 50 - 25, 50 + (lastCursorPos.x - 1) * 50 - 25);
+				RECT lastRECT;
+				lastRECT.left = upLeft.x - 2;
+				lastRECT.top = upLeft.y - 2;
+				lastRECT.right = upLeft.x + 52;
+				lastRECT.bottom = upLeft.y + 52;
+
+				upLeft = Point(200 + (currentCursorPos.y - 1) * 50 - 25, 50 + (currentCursorPos.x - 1) * 50 - 25);
+				RECT currRECT;
+				currRECT.left = upLeft.x - 2;
+				currRECT.top = upLeft.y - 2;
+				currRECT.right = upLeft.x + 52;
+				currRECT.bottom = upLeft.y + 52;
+
+				InvalidateRect(hWnd, &lastRECT, true);
+				InvalidateRect(hWnd, &currRECT, true);
+				UpdateWindow(hWnd);
+				lastCursorPos = currentCursorPos;
+			}
+		}
+		break;
 	case WM_LBUTTONDOWN:
 		{
-			HDC hdc = GetDC(hWnd);
-
+			if (isEnd) break;
 			POINT cursor;
 			GetCursorPos(&cursor);
 			ScreenToClient(hWnd, &cursor);
@@ -276,15 +447,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			else if (diff == 2) MAXDEP = 3;
 			else MAXDEP = 4;
 
-			if (turn == 2 && !isStart)
-			{
-				chessBoard.SetChess(Point(nRows / 2, mCols / 2), (3 - turn));
-				chessBoard.RePaintBoard(hWnd, Point(nRows / 2, mCols / 2));
-				//InvalidateRect(hWnd, NULL, true);
-				//UpdateWindow(hWnd);
-				isStart = 1;
-			}
-
 			Point setPoint = Point(cursor.x, cursor.y);
 			if (!setPoint.Check() || !chessBoard.SetChess(setPoint, turn))
 			{
@@ -292,22 +454,23 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			}
 			isStart = 1;
 
-			//RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ERASE);
-			//InvalidateRect(hWnd, NULL, true);
-			//UpdateWindow(hWnd);
 			chessBoard.RePaintBoard(hWnd, setPoint);
 
 			int boardState = chessBoard.IsFinal(); // -1:平局 1:有一方胜利 0:还未决出胜负
 			if (boardState > 0)
 			{
-				MessageBox(hWnd, TEXT("恭喜获胜！"), TEXT("游戏结束"), MB_OK);
-				PostQuitMessage(0);
+				isEnd = 1;
+				TCHAR szText[256];
+				wsprintf(szText, TEXT("恭喜获胜 !\n再来一局？"));
+				DisplayMessageBox(hWnd, szText, TEXT("游戏结束"), 0);
 				break;
 			}
 			else if (boardState < 0)
 			{
-				MessageBox(hWnd, TEXT("平局！"), TEXT("游戏结束"), MB_OK);
-				PostQuitMessage(0);
+				isEnd = 1;
+				TCHAR szText[256];
+				wsprintf(szText, TEXT("平局 .\n再来一局？"));
+				DisplayMessageBox(hWnd, szText, TEXT("游戏结束"), 0);
 				break;
 			}
 
@@ -316,21 +479,23 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			computerPlayer.AlphaBeta((3 - turn), 1, MAXDEP, -0x7FFFFFFF, 0x7FFFFFFF, best);
 			chessBoard.SetChess(best, (3 - turn));
 
-			//InvalidateRect(hWnd, NULL, true);
-			//UpdateWindow(hWnd);
 			chessBoard.RePaintBoard(hWnd, best);
 
 			boardState = chessBoard.IsFinal(); // -1:平局 1:有一方胜利 0:还未决出胜负
 			if (boardState > 0)
 			{
-				MessageBox(hWnd, TEXT("电脑获胜！"), TEXT("游戏结束"), MB_OK);
-				PostQuitMessage(0);
+				isEnd = 1;
+				TCHAR szText[256];
+				wsprintf(szText, TEXT("电脑获胜 !\n再来一局？"));
+				DisplayMessageBox(hWnd, szText, TEXT("游戏结束"), 0);
 				break;
 			}
 			else if (boardState < 0)
 			{
-				MessageBox(hWnd, TEXT("平局！"), TEXT("游戏结束"), MB_OK);
-				PostQuitMessage(0);
+				isEnd = 1;
+				TCHAR szText[256];
+				wsprintf(szText, TEXT("平局 .\n再来一局？"));
+				DisplayMessageBox(hWnd, szText, TEXT("游戏结束"), 0);
 				break;
 			}
 		}
@@ -419,6 +584,12 @@ void Board::ResetChess(Point w)
 
 bool Board::SetChess(Point w, int player)
 {
+	Record tempRecord;
+	tempRecord.chessCoordinate = w;
+	tempRecord.player = player;
+	GetLocalTime(&tempRecord.localTime);
+	setChessRecords.push_back(tempRecord);
+
 	if (!state[w.x][w.y]) {
 		empty--;
 		return state[w.x][w.y] = player;
@@ -708,6 +879,41 @@ void GAME::Run(int mode)
 }
 
 //非成员函数
+void DisplayMessageBox(HWND hWnd, const TCHAR* szText, const TCHAR* szTitle, bool isQuit)
+{
+	int msgboxID = MessageBox(hWnd, szText, szTitle, MB_ICONINFORMATION | MB_OKCANCEL);
+	switch (msgboxID)
+	{
+		case IDCANCEL:
+			if ( isQuit ) PostQuitMessage(0);
+			break;
+		case IDOK:
+		{
+			TryAgain(hWnd);
+		}
+		break;
+	}
+}
+
+void TryAgain(HWND hWnd)
+{
+	isStart = 0;
+	chessBoard.clear();
+	
+	HMENU hMenu = GetMenu(hWnd);
+	CheckMenuItem(hMenu, ID_WHITE, MF_UNCHECKED);
+	CheckMenuItem(hMenu, ID_BLACK, MF_CHECKED);
+	turn = 1;						//先后手，重置为默认先手（黑棋）
+
+	isStart = 0;					//重置比赛开始状态
+	isEnd = 0;						//重置比赛结束状态
+	currentPosition = Point(0, 0);	//清空当前落子位置
+	lastCursorPos = Point(0, 0);	//清空上一次鼠标位置
+	setChessRecords.clear();		//清空落子记录
+	InvalidateRect(hWnd, NULL, true);
+	UpdateWindow(hWnd);
+}
+
 void findPoint(POINT& cursor)
 {
 	for (int x = 1; x <= nRows; x++)
@@ -723,6 +929,7 @@ void findPoint(POINT& cursor)
 			}
 		}
 	}
+	cursor.x = cursor.y = -1;
 }
 
 int squareDist(Point P, Point Q)

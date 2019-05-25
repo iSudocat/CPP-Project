@@ -28,6 +28,14 @@ struct Point
 	}
 };
 
+struct Record
+{
+	//落子记录
+	SYSTEMTIME localTime;	//落子时间
+	Point chessCoordinate;		//落子位置
+	int player;				//落子玩家(1)/电脑(2)
+};
+
 class Board
 {
 private:
@@ -78,3 +86,6 @@ public:
 void findPoint(POINT& cursor);			//将鼠标客户端坐标转换成棋盘坐标
 int squareDist(Point P, Point Q);		//计算距离的平方
 int square(int x);						//计算平方
+
+void DisplayMessageBox(HWND hWnd, const TCHAR* szText, const TCHAR* szTitle, bool isQuit);				//显示消息框
+void TryAgain(HWND hWnd);
