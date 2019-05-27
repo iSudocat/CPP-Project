@@ -19,6 +19,7 @@ int diff = 2;			//难度，默认normal
 int turn = 1;			//先后手，默认先手（黑棋）
 bool isStart = 0;		//判断比赛是否开始
 bool isEnd = 0;			//判断比赛是否结束
+bool isPlaying = 0;		//判断电脑是否正在计算
 Point currentPosition;	//记录当前落子位置
 Point lastCursorPos;	//记录上一次鼠标位置
 
@@ -168,29 +169,23 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		switch (wmId)
 		{
 		case ID_RESTART:
-			DisplayMessageBox(hWnd, TEXT("确定重新开始？"), TEXT("重新开始"), 0);
+			DisplayMessageBox(hWnd, TEXT("确定重新开始？"), TEXT("重新开始"), TryAgain, NULL);
 			break;
 		case ID_EASY:
 		{
-			CheckMenuItem(hMenu, ID_EASY, MF_CHECKED);
-			CheckMenuItem(hMenu, ID_NORMAL, MF_UNCHECKED);
-			CheckMenuItem(hMenu, ID_HARD, MF_UNCHECKED);
+			ChangeDifficulty(hMenu, ID_EASY, ID_NORMAL, ID_HARD);
 			diff = 1;
 		}
 		break;
 		case ID_NORMAL:
 		{
-			CheckMenuItem(hMenu, ID_EASY, MF_UNCHECKED);
-			CheckMenuItem(hMenu, ID_NORMAL, MF_CHECKED);
-			CheckMenuItem(hMenu, ID_HARD, MF_UNCHECKED);
+			ChangeDifficulty(hMenu, ID_NORMAL, ID_EASY, ID_HARD);
 			diff = 2;
 		}
 		break;
 		case ID_HARD:
 		{
-			CheckMenuItem(hMenu, ID_EASY, MF_UNCHECKED);
-			CheckMenuItem(hMenu, ID_NORMAL, MF_UNCHECKED);
-			CheckMenuItem(hMenu, ID_HARD, MF_CHECKED);
+			ChangeDifficulty(hMenu, ID_HARD, ID_EASY, ID_NORMAL);
 			diff = 3;
 		}
 		break;
@@ -226,11 +221,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			}
 		}
 		break;
+		case ID_READ:
+		{
+			DisplayMessageBox(hWnd, TEXT("确定读取棋局？"), TEXT("读取棋局"), ReadGame_Mulitithread, NULL);
+		}
+		break;
 		case IDM_ABOUT:
 			DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
 			break;
 		case IDM_EXIT:
-			DestroyWindow(hWnd);
+			DisplayMessageBox(hWnd, TEXT("确定退出游戏？"), TEXT("退出游戏"), ExitGame, NULL);
 			break;
 		default:
 			return DefWindowProc(hWnd, message, wParam, lParam);
@@ -318,10 +318,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		int textx = 930;
 		int texty = 100;
 		int num = setChessRecords.size();
-		if (num) {
-			num++;
-			num--;
-		}
 		for (int i = max(0, num - 30); i < num; i++, texty += 20)
 		{
 			Record currentRecord = setChessRecords[i];
@@ -453,95 +449,112 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		if (currentCursorPos.x != lastCursorPos.x || currentCursorPos.y != lastCursorPos.y)
 		{
 			Point upLeft = Point(50 + (lastCursorPos.y - 1) * 50 - 25, 50 + (lastCursorPos.x - 1) * 50 - 25);
-			RECT lastRECT;
-			lastRECT.left = upLeft.x - 2;
-			lastRECT.top = upLeft.y - 2;
-			lastRECT.right = upLeft.x + 52;
-			lastRECT.bottom = upLeft.y + 52;
+			RECT lastRECTUp, lastRECTRt, lastRECTBm, lastRECTLt;
+			lastRECTUp.left = upLeft.x - 2;
+			lastRECTUp.top = upLeft.y - 2;
+			lastRECTUp.right = upLeft.x + 48;
+			lastRECTUp.bottom = upLeft.y + 2;
+
+			lastRECTRt.left = upLeft.x + 48;
+			lastRECTRt.top = upLeft.y - 2;
+			lastRECTRt.right = upLeft.x + 52;
+			lastRECTRt.bottom = upLeft.y + 48;
+			
+			lastRECTBm.left = upLeft.x + 2;
+			lastRECTBm.top = upLeft.y + 48;
+			lastRECTBm.right = upLeft.x + 52;
+			lastRECTBm.bottom = upLeft.y + 52;
+
+			lastRECTLt.left = upLeft.x - 2;
+			lastRECTLt.top = upLeft.y + 2;
+			lastRECTLt.right = upLeft.x + 2;
+			lastRECTLt.bottom = upLeft.y + 52;
+
+			InvalidateRect(hWnd, &lastRECTUp, true);
+			InvalidateRect(hWnd, &lastRECTRt, true);
+			InvalidateRect(hWnd, &lastRECTBm, true);
+			InvalidateRect(hWnd, &lastRECTLt, true);
 
 			upLeft = Point(50 + (currentCursorPos.y - 1) * 50 - 25, 50 + (currentCursorPos.x - 1) * 50 - 25);
-			RECT currRECT;
-			currRECT.left = upLeft.x - 2;
-			currRECT.top = upLeft.y - 2;
-			currRECT.right = upLeft.x + 52;
-			currRECT.bottom = upLeft.y + 52;
+			RECT currRECTUp, currRECTRt, currRECTBm, currRECTLt;
+			currRECTUp.left = upLeft.x - 2;
+			currRECTUp.top = upLeft.y - 2;
+			currRECTUp.right = upLeft.x + 48;
+			currRECTUp.bottom = upLeft.y + 2;
 
-			InvalidateRect(hWnd, &lastRECT, true);
-			InvalidateRect(hWnd, &currRECT, true);
+			currRECTRt.left = upLeft.x + 48;
+			currRECTRt.top = upLeft.y - 2;
+			currRECTRt.right = upLeft.x + 52;
+			currRECTRt.bottom = upLeft.y + 48;
+
+			currRECTBm.left = upLeft.x + 2;
+			currRECTBm.top = upLeft.y + 48;
+			currRECTBm.right = upLeft.x + 52;
+			currRECTBm.bottom = upLeft.y + 52;
+
+			currRECTLt.left = upLeft.x - 2;
+			currRECTLt.top = upLeft.y + 2;
+			currRECTLt.right = upLeft.x + 2;
+			currRECTLt.bottom = upLeft.y + 52;
+
+			InvalidateRect(hWnd, &currRECTUp, true);
+			InvalidateRect(hWnd, &currRECTRt, true);
+			InvalidateRect(hWnd, &currRECTBm, true);
+			InvalidateRect(hWnd, &currRECTLt, true);
+
 			UpdateWindow(hWnd);
 			lastCursorPos = currentCursorPos;
 		}
 	}
 	break;
 	case WM_LBUTTONDOWN:
-	{
-		if (isEnd) break;
-		POINT cursor;
-		GetCursorPos(&cursor);
-		ScreenToClient(hWnd, &cursor);
-		findPoint(cursor);
-
-
-		int MAXDEP = 3;
-		if (diff == 1) MAXDEP = 1;
-		else if (diff == 2) MAXDEP = 3;
-		else MAXDEP = 4;
-
-		Point setPoint = Point(cursor.x, cursor.y);
-		if (!setPoint.Check() || !chessBoard.SetChess(setPoint, turn))
 		{
-			break;
-		}
-		isStart = 1;
+			if (isEnd || isPlaying) break;
+			POINT cursor;
+			GetCursorPos(&cursor);
+			ScreenToClient(hWnd, &cursor);
+			findPoint(cursor);
 
-		NewRecord(setPoint, turn);
-		chessBoard.RePaintBoard(hWnd, setPoint);
 
-		int boardState = chessBoard.IsFinal(); // -1:平局 1:有一方胜利 0:还未决出胜负
-		if (boardState > 0)
-		{
-			isEnd = 1;
-			TCHAR szText[256];
-			wsprintf(szText, TEXT("恭喜获胜 !\n再来一局？"));
-			DisplayMessageBox(hWnd, szText, TEXT("游戏结束"), 0);
-			break;
-		}
-		else if (boardState < 0)
-		{
-			isEnd = 1;
-			TCHAR szText[256];
-			wsprintf(szText, TEXT("平局 .\n再来一局？"));
-			DisplayMessageBox(hWnd, szText, TEXT("游戏结束"), 0);
-			break;
-		}
+			int MAXDEP = 3;
+			if (diff == 1) MAXDEP = 1;
+			else if (diff == 2) MAXDEP = 3;
+			else MAXDEP = 4;
 
-		AI computerPlayer(chessBoard);
-		Point best = Point(0, 0);
-		computerPlayer.AlphaBeta((3 - turn), 1, MAXDEP, -0x7FFFFFFF, 0x7FFFFFFF, best);
-		chessBoard.SetChess(best, (3 - turn));
-		NewRecord(best, (3 - turn));
+			Point setPoint = Point(cursor.x, cursor.y);
+			if (!setPoint.Check() || !chessBoard.SetChess(setPoint, turn))
+			{
+				break;
+			}
+			isStart = 1;
 
-		chessBoard.RePaintBoard(hWnd, best);
+			NewRecord(setPoint, turn);
+			chessBoard.RePaintBoard(hWnd, setPoint);
 
-		boardState = chessBoard.IsFinal(); // -1:平局 1:有一方胜利 0:还未决出胜负
-		if (boardState > 0)
-		{
-			isEnd = 1;
-			TCHAR szText[256];
-			wsprintf(szText, TEXT("电脑获胜 !\n再来一局？"));
-			DisplayMessageBox(hWnd, szText, TEXT("游戏结束"), 0);
-			break;
+			int boardState = chessBoard.IsFinal(); // -1:平局 1:有一方胜利 0:还未决出胜负
+			if (boardState > 0)
+			{
+				isEnd = 1;
+				TCHAR szText[256];
+				wsprintf(szText, TEXT("恭喜获胜 !\n再来一局？"));
+				DisplayMessageBox(hWnd, szText, TEXT("游戏结束"), TryAgain, NULL);
+				break;
+			}
+			else if (boardState < 0)
+			{
+				isEnd = 1;
+				TCHAR szText[256];
+				wsprintf(szText, TEXT("平局 .\n再来一局？"));
+				DisplayMessageBox(hWnd, szText, TEXT("游戏结束"), TryAgain, NULL);
+				break;
+			}
+
+			//多线程计算电脑落子位置
+			//为防止计算造成窗口卡顿，将使用多线程执行搜索函数
+			std::thread t(ComputersTurn); //创建一个线程t，参数1为运行的函数，参数2为传递的参数（可空）
+			t.detach(); //表示该线程在后台允许，无需等待该线程的函数返回，继续执行后面的语句
 		}
-		else if (boardState < 0)
-		{
-			isEnd = 1;
-			TCHAR szText[256];
-			wsprintf(szText, TEXT("平局 .\n再来一局？"));
-			DisplayMessageBox(hWnd, szText, TEXT("游戏结束"), 0);
-			break;
-		}
-	}
-	break;
+		break;
 	case WM_DESTROY:
 		PostQuitMessage(0);
 		break;
@@ -858,26 +871,27 @@ void NewRecord(Point w, int player)
 	GetLocalTime(&tempRecord.localTime);
 	setChessRecords.push_back(tempRecord);
 }
-void DisplayMessageBox(HWND hWnd, const TCHAR * szText, const TCHAR * szTitle, bool isQuit)
+void DisplayMessageBox(HWND hWnd, const TCHAR * szText, const TCHAR * szTitle, void (* OKFunction)( ), void (*CancelFunction)( ))
 {
 	int msgboxID = MessageBox(hWnd, szText, szTitle, MB_ICONINFORMATION | MB_OKCANCEL);
 	switch (msgboxID)
 	{
 	case IDCANCEL:
-		if (isQuit) PostQuitMessage(0);
+		if (CancelFunction) CancelFunction();
 		InvalidateRect(hWnd, NULL, true);
 		UpdateWindow(hWnd);
 		break;
 	case IDOK:
 	{
-		TryAgain(hWnd);
+		if (OKFunction) OKFunction();
 	}
 	break;
 	}
 }
 
-void TryAgain(HWND hWnd)
+void TryAgain()
 {
+	HWND hWnd = mainhWnd;
 	isStart = 0;
 	chessBoard.clear();
 
@@ -893,6 +907,143 @@ void TryAgain(HWND hWnd)
 	setChessRecords.clear();		//清空落子记录
 	InvalidateRect(hWnd, NULL, true);
 	UpdateWindow(hWnd);
+}
+
+
+void ReadGame_Mulitithread()
+{
+	std::thread t(ReadGame);
+	t.detach();
+	return;
+}
+
+void ReadGame()
+{
+	FILE* fp;
+	if ( fopen_s(&fp, "chess.log", "r") == 0 )
+	{
+		MessageBox(mainhWnd, TEXT("读取成功"), TEXT("成功"), MB_OK | MB_ICONINFORMATION);
+	}
+	else
+	{
+		MessageBox(mainhWnd, TEXT("读取失败\n错误信息：文件不存在"), TEXT("失败"), MB_OK | MB_ICONERROR);
+		return;
+	}
+	int tot = 0;
+	int num_of_com = 0;
+	int num_of_man = 0;
+	fscanf_s(fp, "%d%d%d\n", &diff, &turn, &tot);
+
+	chessBoard.clear();
+	setChessRecords.clear();		//清空落子记录
+	for (int i = 0; i < tot; i++)
+	{
+		int h, m, s, x, y, p;
+		fscanf_s(fp, "%02d:%02d:%02d (%02d,%02d) %d", &h, &m, &s, &x, &y, &p);
+		Record tempRecord;
+		tempRecord.localTime.wHour = h;
+		tempRecord.localTime.wMinute = m;
+		tempRecord.localTime.wSecond = s;
+		tempRecord.chessCoordinate = Point(x, y);
+		tempRecord.player = p;
+		chessBoard.SetChess(Point(x, y), p);
+		setChessRecords.push_back(tempRecord);
+		num_of_man += p == turn;
+		num_of_com += p != turn;
+	}
+
+	if (chessBoard.IsFinal())
+	{
+		isStart = 1;
+		isEnd = 1;
+	}
+	else
+	{
+		if (tot == 0) isStart = 0;
+		else isStart = 1;
+		isEnd = 0;
+	}
+
+	HWND hWnd = mainhWnd;
+	HMENU hMenu = GetMenu(hWnd);
+	if (turn == 1)
+	{
+		CheckMenuItem(hMenu, ID_WHITE, MF_UNCHECKED);
+		CheckMenuItem(hMenu, ID_BLACK, MF_CHECKED);
+	}
+	else
+	{
+		CheckMenuItem(hMenu, ID_WHITE, MF_CHECKED);
+		CheckMenuItem(hMenu, ID_BLACK, MF_UNCHECKED);
+	}
+	
+	switch (diff)
+	{
+	case 1:
+		ChangeDifficulty(hMenu, ID_EASY, ID_NORMAL, ID_HARD);
+		break;
+	case 2:
+		ChangeDifficulty(hMenu, ID_NORMAL, ID_EASY, ID_HARD);
+		break;
+	case 3:
+		ChangeDifficulty(hMenu, ID_HARD, ID_EASY, ID_NORMAL);
+		break;
+	}
+
+	if (tot) currentPosition = setChessRecords.back().chessCoordinate;	//清空当前落子位置
+	InvalidateRect(hWnd, NULL, true);
+	UpdateWindow(hWnd);
+	Sleep(1000);
+	if (num_of_com < num_of_man || (num_of_com == num_of_man && turn == 2)) ComputersTurn();
+}
+
+void ExitGame()
+{
+	DestroyWindow(mainhWnd);
+	return;
+}
+
+void ChangeDifficulty(HMENU hMenu, UINT checked, UINT unchecked_one, UINT unchecked_two)
+{
+	CheckMenuItem(hMenu, checked, MF_CHECKED);
+	CheckMenuItem(hMenu, unchecked_one, MF_UNCHECKED);
+	CheckMenuItem(hMenu, unchecked_two, MF_UNCHECKED);
+}
+
+void ComputersTurn()
+{
+	HWND hWnd = mainhWnd;
+	isPlaying = 1;
+	
+	int MAXDEP = 3;
+	if (diff == 1) MAXDEP = 1;
+	else if (diff == 2) MAXDEP = 3;
+	else MAXDEP = 4;
+
+	AI computerPlayer(chessBoard);
+	Point best = Point(0, 0);
+
+	computerPlayer.AlphaBeta((3 - turn), 1, MAXDEP, -0x7FFFFFFF, 0x7FFFFFFF, best);
+	chessBoard.SetChess(best, (3 - turn));
+	NewRecord(best, (3 - turn));
+	chessBoard.RePaintBoard(hWnd, best);
+
+	int boardState = chessBoard.IsFinal(); // -1:平局 1:有一方胜利 0:还未决出胜负
+	if (boardState > 0)
+	{
+		isEnd = 1;
+		TCHAR szText[256];
+		wsprintf(szText, TEXT("电脑获胜 !\n再来一局？"));
+		DisplayMessageBox(hWnd, szText, TEXT("游戏结束"), TryAgain, NULL);
+	}
+	else if (boardState < 0)
+	{
+		isEnd = 1;
+		TCHAR szText[256];
+		wsprintf(szText, TEXT("平局 .\n再来一局？"));
+		DisplayMessageBox(hWnd, szText, TEXT("游戏结束"), TryAgain, NULL);
+	}
+	isPlaying = 0;
 }
 
 void findPoint(POINT & cursor)

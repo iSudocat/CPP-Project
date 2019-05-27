@@ -7,6 +7,7 @@
 #include <iostream>
 #include <algorithm>
 #include <vector>
+#include <thread>
 using namespace std;
 
 const int N = 20;
@@ -77,6 +78,12 @@ void findPoint(POINT& cursor);			//将鼠标客户端坐标转换成棋盘坐标
 int squareDist(Point P, Point Q);		//计算距离的平方
 int square(int x);						//计算平方
 
-void DisplayMessageBox(HWND hWnd, const TCHAR* szText, const TCHAR* szTitle, bool isQuit);				//显示消息框
-void TryAgain(HWND hWnd);				//重新开始游戏
-void NewRecord(Point w, int player);	//新增一条记录
+void DisplayMessageBox(HWND hWnd, const TCHAR* szText, const TCHAR* szTitle, void (*OKFunction)() = NULL, void (*CancelFunction)() = NULL);				//显示消息框
+void ChangeDifficulty(HMENU hMenu, UINT checked, UINT unchecked_one, UINT unchecked_two);			//改变难度复选框
+void TryAgain();							//重新开始游戏
+void SaveGame();							//保存游戏
+void ReadGame();							//读取游戏
+void ExitGame();							//退出游戏
+void NewRecord(Point w, int player);		//新增一条记录
+void ComputersTurn();						//电脑计算落子位置
+void ReadGame_Mulitithread();
