@@ -86,4 +86,5 @@ void ReadGame();							//读取游戏
 void ExitGame();							//退出游戏
 void NewRecord(Point w, int player);		//新增一条记录
 void ComputersTurn();						//电脑计算落子位置
-void ReadGame_Mulitithread();
+void ReadGame_Mulitithread();				//用多线程读取存档
+void SaveGame_Mulitithread();				//用多线程保存游戏

@@ -222,10 +222,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		}
 		break;
 		case ID_READ:
-		{
-			DisplayMessageBox(hWnd, TEXT("确定读取棋局？"), TEXT("读取棋局"), ReadGame_Mulitithread, NULL);
-		}
-		break;
+			DisplayMessageBox(hWnd, TEXT("确定读取存档？"), TEXT("读取存档"), ReadGame_Mulitithread, NULL);
+			break;
+		case ID_SAVE:
+			DisplayMessageBox(hWnd, TEXT("确定保存游戏？\n可能会覆盖之前的存档"), TEXT("保存游戏"), SaveGame_Mulitithread, NULL);
+			break;
 		case IDM_ABOUT:
 			DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
 			break;
@@ -448,61 +449,70 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		Point currentCursorPos = Point(currentCursor.x, currentCursor.y);
 		if (currentCursorPos.x != lastCursorPos.x || currentCursorPos.y != lastCursorPos.y)
 		{
-			Point upLeft = Point(50 + (lastCursorPos.y - 1) * 50 - 25, 50 + (lastCursorPos.x - 1) * 50 - 25);
-			RECT lastRECTUp, lastRECTRt, lastRECTBm, lastRECTLt;
-			lastRECTUp.left = upLeft.x - 2;
-			lastRECTUp.top = upLeft.y - 2;
-			lastRECTUp.right = upLeft.x + 48;
-			lastRECTUp.bottom = upLeft.y + 2;
+			Point upLeft;
 
-			lastRECTRt.left = upLeft.x + 48;
-			lastRECTRt.top = upLeft.y - 2;
-			lastRECTRt.right = upLeft.x + 52;
-			lastRECTRt.bottom = upLeft.y + 48;
-			
-			lastRECTBm.left = upLeft.x + 2;
-			lastRECTBm.top = upLeft.y + 48;
-			lastRECTBm.right = upLeft.x + 52;
-			lastRECTBm.bottom = upLeft.y + 52;
+			if (lastCursorPos.Check())
+			{
+				upLeft = Point(50 + (lastCursorPos.y - 1) * 50 - 25, 50 + (lastCursorPos.x - 1) * 50 - 25);
+				RECT lastRECTUp, lastRECTRt, lastRECTBm, lastRECTLt;
+				lastRECTUp.left = upLeft.x - 2;
+				lastRECTUp.top = upLeft.y - 2;
+				lastRECTUp.right = upLeft.x + 48;
+				lastRECTUp.bottom = upLeft.y + 2;
 
-			lastRECTLt.left = upLeft.x - 2;
-			lastRECTLt.top = upLeft.y + 2;
-			lastRECTLt.right = upLeft.x + 2;
-			lastRECTLt.bottom = upLeft.y + 52;
+				lastRECTRt.left = upLeft.x + 48;
+				lastRECTRt.top = upLeft.y - 2;
+				lastRECTRt.right = upLeft.x + 52;
+				lastRECTRt.bottom = upLeft.y + 48;
 
-			InvalidateRect(hWnd, &lastRECTUp, true);
-			InvalidateRect(hWnd, &lastRECTRt, true);
-			InvalidateRect(hWnd, &lastRECTBm, true);
-			InvalidateRect(hWnd, &lastRECTLt, true);
+				lastRECTBm.left = upLeft.x + 2;
+				lastRECTBm.top = upLeft.y + 48;
+				lastRECTBm.right = upLeft.x + 52;
+				lastRECTBm.bottom = upLeft.y + 52;
 
-			upLeft = Point(50 + (currentCursorPos.y - 1) * 50 - 25, 50 + (currentCursorPos.x - 1) * 50 - 25);
-			RECT currRECTUp, currRECTRt, currRECTBm, currRECTLt;
-			currRECTUp.left = upLeft.x - 2;
-			currRECTUp.top = upLeft.y - 2;
-			currRECTUp.right = upLeft.x + 48;
-			currRECTUp.bottom = upLeft.y + 2;
+				lastRECTLt.left = upLeft.x - 2;
+				lastRECTLt.top = upLeft.y + 2;
+				lastRECTLt.right = upLeft.x + 2;
+				lastRECTLt.bottom = upLeft.y + 52;
 
-			currRECTRt.left = upLeft.x + 48;
-			currRECTRt.top = upLeft.y - 2;
-			currRECTRt.right = upLeft.x + 52;
-			currRECTRt.bottom = upLeft.y + 48;
+				InvalidateRect(hWnd, &lastRECTUp, true);
+				InvalidateRect(hWnd, &lastRECTRt, true);
+				InvalidateRect(hWnd, &lastRECTBm, true);
+				InvalidateRect(hWnd, &lastRECTLt, true);
+			}
 
-			currRECTBm.left = upLeft.x + 2;
-			currRECTBm.top = upLeft.y + 48;
-			currRECTBm.right = upLeft.x + 52;
-			currRECTBm.bottom = upLeft.y + 52;
+			if (currentCursorPos.Check())
+			{
+				upLeft = Point(50 + (currentCursorPos.y - 1) * 50 - 25, 50 + (currentCursorPos.x - 1) * 50 - 25);
+				RECT currRECTUp, currRECTRt, currRECTBm, currRECTLt;
+				currRECTUp.left = upLeft.x - 2;
+				currRECTUp.top = upLeft.y - 2;
+				currRECTUp.right = upLeft.x + 48;
+				currRECTUp.bottom = upLeft.y + 2;
 
-			currRECTLt.left = upLeft.x - 2;
-			currRECTLt.top = upLeft.y + 2;
-			currRECTLt.right = upLeft.x + 2;
-			currRECTLt.bottom = upLeft.y + 52;
+				currRECTRt.left = upLeft.x + 48;
+				currRECTRt.top = upLeft.y - 2;
+				currRECTRt.right = upLeft.x + 52;
+				currRECTRt.bottom = upLeft.y + 48;
 
-			InvalidateRect(hWnd, &currRECTUp, true);
-			InvalidateRect(hWnd, &currRECTRt, true);
-			InvalidateRect(hWnd, &currRECTBm, true);
-			InvalidateRect(hWnd, &currRECTLt, true);
+				currRECTBm.left = upLeft.x + 2;
+				currRECTBm.top = upLeft.y + 48;
+				currRECTBm.right = upLeft.x + 52;
+				currRECTBm.bottom = upLeft.y + 52;
 
-			UpdateWindow(hWnd);
+				currRECTLt.left = upLeft.x - 2;
+				currRECTLt.top = upLeft.y + 2;
+				currRECTLt.right = upLeft.x + 2;
+				currRECTLt.bottom = upLeft.y + 52;
+
+				InvalidateRect(hWnd, &currRECTUp, true);
+				InvalidateRect(hWnd, &currRECTRt, true);
+				InvalidateRect(hWnd, &currRECTBm, true);
+				InvalidateRect(hWnd, &currRECTLt, true);
+
+			}
+
+			if ( lastCursorPos.Check() || currentCursorPos.Check() ) UpdateWindow(hWnd);
 			lastCursorPos = currentCursorPos;
 		}
 	}
@@ -514,12 +524,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			GetCursorPos(&cursor);
 			ScreenToClient(hWnd, &cursor);
 			findPoint(cursor);
-
-
-			int MAXDEP = 3;
-			if (diff == 1) MAXDEP = 1;
-			else if (diff == 2) MAXDEP = 3;
-			else MAXDEP = 4;
 
 			Point setPoint = Point(cursor.x, cursor.y);
 			if (!setPoint.Check() || !chessBoard.SetChess(setPoint, turn))
@@ -909,12 +913,44 @@ void TryAgain()
 	UpdateWindow(hWnd);
 }
 
+void SaveGame_Mulitithread()
+{
+	std::thread t(SaveGame);
+	t.detach();
+	return;
+}
 
 void ReadGame_Mulitithread()
 {
 	std::thread t(ReadGame);
 	t.detach();
 	return;
+}
+
+void SaveGame()
+{
+	FILE* fp;
+	if (fopen_s(&fp, "chess.log", "w") == 0)
+	{
+		MessageBox(mainhWnd, TEXT("保存成功"), TEXT("成功"), MB_OK | MB_ICONINFORMATION);
+	}
+	else
+	{
+		MessageBox(mainhWnd, TEXT("保存失败\n文件不存在，请保存游戏后再次尝试"), TEXT("失败"), MB_OK | MB_ICONERROR);
+		return;
+	}
+	int tot = setChessRecords.size();
+	fprintf(fp, "%d %d %d\n", diff, turn, tot);
+	for (int i = 0; i < tot; i++)
+	{
+		Record currRecord = setChessRecords[i];
+		fprintf_s(fp, "%02d:%02d:%02d (%02d,%02d) %d\n", 
+			currRecord.localTime.wHour, currRecord.localTime.wMinute, currRecord.localTime.wSecond, 
+			currRecord.chessCoordinate.x, currRecord.chessCoordinate.y, currRecord.player);
+	}
+	fprintf(fp, "//存档格式如下：\n//第一行三个数分别是难度 玩家所执棋 棋子数量\n");
+	fprintf(fp, "//接下来若干行，每行格式都是： 时间 位置 黑/白棋\n");
+	fclose(fp);
 }
 
 void ReadGame()
@@ -926,13 +962,13 @@ void ReadGame()
 	}
 	else
 	{
-		MessageBox(mainhWnd, TEXT("读取失败\n错误信息：文件不存在"), TEXT("失败"), MB_OK | MB_ICONERROR);
+		MessageBox(mainhWnd, TEXT("读取失败\n文件不存在，请保存游戏后再次尝试"), TEXT("失败"), MB_OK | MB_ICONERROR);
 		return;
 	}
 	int tot = 0;
 	int num_of_com = 0;
 	int num_of_man = 0;
-	fscanf_s(fp, "%d%d%d\n", &diff, &turn, &tot);
+	fscanf_s(fp, "%d %d %d", &diff, &turn, &tot);
 
 	chessBoard.clear();
 	setChessRecords.clear();		//清空落子记录
@@ -951,6 +987,7 @@ void ReadGame()
 		num_of_man += p == turn;
 		num_of_com += p != turn;
 	}
+	fclose(fp);
 
 	if (chessBoard.IsFinal())
 	{
