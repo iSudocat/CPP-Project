@@ -234,8 +234,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			DisplayMessageBox(hWnd, TEXT("确定退出游戏？"), TEXT("退出游戏"), ExitGame, NULL);
 			break;
 		default:
+		{
+			DeleteObject(hMenu);
 			return DefWindowProc(hWnd, message, wParam, lParam);
+		}	
 		}
+		DeleteObject(hMenu);
 	}
 	break;
 	case WM_PAINT:
@@ -911,6 +915,7 @@ void TryAgain()
 	setChessRecords.clear();		//清空落子记录
 	InvalidateRect(hWnd, NULL, true);
 	UpdateWindow(hWnd);
+	DeleteObject(hMenu);
 }
 
 void SaveGame_Mulitithread()
