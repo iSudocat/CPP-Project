@@ -20,7 +20,7 @@
 /////////////////全局变量/////////////////////////////
 HWND hwnd;     //窗口句柄变量
 UINT timer_id = 0;    //保存计时器ID
-byte g_panel[ROWS][COLS] = { 0 };
+byte Bg_Panel[ROWS][COLS] = { 0 };
 bool isPause = false;    //暂停标识
 bool isover = false;	//游戏结束标识
 int** block_new;
@@ -319,7 +319,7 @@ void Game::DoLeftShift(HDC hdc)    //左移
 			if (block_new[y][x] == 1)	//从左边开始扫描，找到第y行最左边的实心方块
 			{
 				//判断当前方格在面板上面左边一个方格是否为实心，是就代表不能再左移
-				if (g_panel[cur_block.GetCurTop()  + y][cur_block.GetCurLeft () + x - 1] == 1) return;
+				if (Bg_Panel[cur_block.GetCurTop()  + y][cur_block.GetCurLeft () + x - 1] == 1) return;
 
 
 				break;  //第y行从左数第一个实心方块的左边没有方块，继续扫描下一行
@@ -345,7 +345,7 @@ void Game::DoRightShift(HDC hdc)    //右移
 			if (block_new[y][x] == 1)	//从右边开始扫描，找到第y行最右边的实心方块
 			{
 				//判断当前方格在面板上右边一个方格是否为实心，是就代表不能再右移
-				if (g_panel[cur_block.GetCurTop () + y][cur_block.GetCurLeft () + x + 1]) return;
+				if (Bg_Panel[cur_block.GetCurTop () + y][cur_block.GetCurLeft () + x + 1]) return;
 
 				break;  //第y行从右数第一个实心方块的右边没有方块，继续扫描下一行
 			}
@@ -359,7 +359,6 @@ void Game::DoRightShift(HDC hdc)    //右移
 void Game::DoRedirection(HDC hdc)   //改变方向
 {
 	int i, j;
-	//byte* temp = NULL;
 	if (block_new == NULL) return;
 	if (cur_block.GetCurTop () < 0) return;  //方块完整显示前不能转向
 
@@ -370,26 +369,19 @@ void Game::DoRedirection(HDC hdc)   //改变方向
 		block_temp[i] = new int[cur_block.GetHeight()];
 	}
 
-
 	for (i = 0; i < cur_block.GetWidth (); i++)
 	{
 		for (j = 0; j < cur_block.GetHeight (); j++)
 		{
-			//temp[i][j]=block[height_block-j-1][i];block_new[j][i]
 			block_temp[i][j] = block_new[j][cur_block.GetWidth() - i - 1];
 		}
 	}
-
-	
 
 	//重新定位方块
 	int incHeight = cur_block.GetWidth () - cur_block.GetHeight ();
 	int incWidth = cur_block.GetHeight() - cur_block.GetWidth();
 	int temp_cur_top = cur_block.GetCurTop () - incHeight / 2;
 	int temp_cur_left = cur_block.GetCurLeft () - incWidth / 2;
-
-	//system("cls");
-	//printf("temp_top=%d, temp_left=%d",temp_cur_top,temp_cur_left);
 
 	//判断当前空间是否足够让方块改变方向
 	int max_len = max(cur_block.GetWidth (), cur_block.GetHeight ());
@@ -404,7 +396,7 @@ void Game::DoRedirection(HDC hdc)   //改变方向
 		for (j = 0; j < max_len; j++)
 		{
 			//转向所需的空间内有已被占用的实心方格存在，即转向失败
-			if (g_panel[temp_cur_top + i][temp_cur_left + j])
+			if (Bg_Panel[temp_cur_top + i][temp_cur_left + j])
 			{
 				Tetris.DeleteBlocktemp(block_temp,cur_block.GetWidth());  //退出前必须先释放内存
 				return;
@@ -466,7 +458,7 @@ bool Game::IsTouchBottom(HDC hdc)	//触底检测
 			{
 				//block_new[y][x] = 1  block_new[i][j]
 				if (block_new[i][j])
-					g_panel[cur_block.GetCurTop () + i][cur_block.GetCurLeft () + j] = 1;
+					Bg_Panel[cur_block.GetCurTop () + i][cur_block.GetCurLeft () + j] = 1;
 			}
 		}
 		return true;
@@ -480,7 +472,7 @@ bool Game::IsTouchBottom(HDC hdc)	//触底检测
 			if (block_new[y][x])
 			{
 				if (cur_block.GetCurTop () + y + 1 < 0) return false;
-				if (g_panel[cur_block.GetCurTop ()+ y + 1][cur_block.GetCurLeft () + x])
+				if (Bg_Panel[cur_block.GetCurTop ()+ y + 1][cur_block.GetCurLeft () + x])
 				{
 					//判断是否gameover
 					if (cur_block.GetCurTop () <= 0)
@@ -505,7 +497,7 @@ bool Game::IsTouchBottom(HDC hdc)	//触底检测
 						for (j = 0; j < cur_block.GetWidth (); j++)
 						{
 							if (block_new[i][j]) 
-								g_panel[cur_block.GetCurTop() + i][cur_block.GetCurLeft() + j] = 1;
+								Bg_Panel[cur_block.GetCurTop() + i][cur_block.GetCurLeft() + j] = 1;
 						}
 					}
 					return true;
@@ -527,7 +519,7 @@ void Game::ClearRow(HDC hdc)      //消行
 		isFilled = true;
 		for (j = 0; j < COLS; j++)
 		{
-			if (!g_panel[i][j])
+			if (!Bg_Panel[i][j])
 			{
 				isFilled = false;
 				break;
@@ -537,14 +529,14 @@ void Game::ClearRow(HDC hdc)      //消行
 		{
 			for (j = 0; j < COLS; j++)
 			{
-				g_panel[i][j] = 0;
+				Bg_Panel[i][j] = 0;
 			}
 			//所有方块往下移
 			for (k = i - 1; k >= 0; k--)
 			{
 				for (j = 0; j < COLS; j++)
 				{
-					g_panel[k + 1][j] = g_panel[k][j];
+					Bg_Panel[k + 1][j] = Bg_Panel[k][j];
 				}
 			}
 			i = i + 1;
@@ -555,20 +547,20 @@ void Game::ClearRow(HDC hdc)      //消行
 	//最高级别为9级，所以分数极限为(9+1)*SCORE_LEVEL_INC-1
 	if (score >= 10 * SCORE_LEVEL_INC - 1) return;
 
-	//加分规则：消除行数，1行加10分，2行加15分,3行加20分,4行加30分
+	//加分：消除1行加10分，2行加30分,3行加50分,4行加70分
 	switch (count)
 	{
 	case 1:
 		score += 10;
 		break;
 	case 2:
-		score += 15;
+		score += 30;
 		break;
 	case 3:
-		score += 20;
+		score += 50;
 		break;
 	case 4:
-		score += 30;
+		score += 70;
 		break;
 	}
 
@@ -576,13 +568,11 @@ void Game::ClearRow(HDC hdc)      //消行
 	if (temp_level > level)
 	{
 		level = temp_level;
-		//撤销当前计时器，然后重设
+		//撤销当前计时器，然后重设计时器
 		if (timer_id) KillTimer(hwnd, timer_id);
 		timer_id = SetTimer(hwnd, ID_TIMER, interval_base - level * interval_unit, NULL);
 	}
 
-	//system("cls");
-	//printf("score: %d, level: %d ", score, level);
 }
 
 void Game::RefreshPanel(HDC hdc)     //刷新面板
@@ -604,7 +594,7 @@ void Game::RefreshPanel(HDC hdc)     //刷新面板
 			rect.bottom = (y + 1) * CELL - 2;
 			rect.left = x * CELL + 2;
 			rect.right = (x + 1) * CELL - 2;
-			if (g_panel[y][x])
+			if (Bg_Panel[y][x])
 				FillRect(hdc, &rect, h_bSolid);		//填充方块
 			else
 				FillRect(hdc, &rect, h_bEmpty);		//取消方块填充
